@@ -10,6 +10,8 @@ logger = logging.getLogger()
 s3 = boto3.client('s3')
 
 def lambda_handler(event, context):
+    logger.info(f"Received event: {event}")
+    
     # Get the S3 bucket and object key from the event
     bucket_name = event['Records'][0]['s3']['bucket']['name']
     txt_file_key = event['Records'][0]['s3']['object']['key']
@@ -25,16 +27,23 @@ def lambda_handler(event, context):
         s3.download_file(bucket_name, txt_file_key, txt_file_path)
         logger.info(f"Downloaded file from S3: {txt_file_path}")
         
-        # Read the downloaded file and log its content for debugging
-        with open(txt_file_path, 'r') as txt_file:
-            txt_content = txt_file.read()
-            logger.info(f"Content of the downloaded file:\n{txt_content}")
-
         # Convert .txt file to .csv
         with open(txt_file_path, 'r') as txt_file, open(csv_file_path, 'w', newline='') as csv_file:
             writer = csv.writer(csv_file)
             for line in txt_file:
-                columns = line.strip().split()
+                # Skip empty lines
+                if not line.strip():
+                    continue
+
+                # Split the line first by commas
+                comma_separated_segments = line.strip().split(',')
+
+                # Further split each comma-separated segment by spaces
+                columns = []
+                for segment in comma_separated_segments:
+                    columns.extend(segment.strip().split())
+
+                # Log the columns being written
                 logger.info(f"Writing line to CSV: {columns}")
                 writer.writerow(columns)
 
